@@ -40,6 +40,12 @@ func setUpWorkspacesForTests() {
     TestApp.shared.windows = []
 
     global_layoutForNextDetectedWindow = nil
+
+    // Run the upstream command/layout suite with the protection enabled as well
+    // as disabled. This changes only the test configuration, never production.
+    if ProcessInfo.processInfo.environment["AEROSPACE_TEST_AGENT_WORKSPACE"] == "1" {
+        config.agentWorkspace.enabled = true
+    }
 }
 
 extension ParsedCmd {

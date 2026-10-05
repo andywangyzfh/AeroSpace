@@ -32,12 +32,14 @@ func validateAgentWorkspace(_ config: Config, _ c: inout ConfigParserContext) {
                               preventConfigReload: true))
         return
     }
-    let entersWorkspace = binding.commands.flatten().contains { command in
+    let entersWorkspace: Bool = if case .cmd(let command) = binding.commands {
         (command as? WorkspaceCommand)?.args.target.val.workspaceNameOrNil()?.raw == policy.name
+    } else {
+        false
     }
     if !entersWorkspace {
         c.errors.append(.init(backtrace + .key("entry-binding"),
-                              "The entry binding must directly run 'workspace \(policy.name)'",
+                              "The entry binding must directly run 'workspace \(policy.name)' as a single command",
                               preventConfigReload: true))
     }
 }

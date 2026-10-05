@@ -29,6 +29,10 @@ jobs:
         run: swift test --build-system native --skip-build --filter AgentWorkspaceTest | tee agent-workspace-tests.log
       - name: Run full regression suite
         run: swift test --build-system native --skip-build | tee full-tests.log
+      - name: Run regression suite with workspace protection enabled
+        env:
+          AEROSPACE_TEST_AGENT_WORKSPACE: '1'
+        run: swift test --build-system native --skip-build | tee protected-full-tests.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -36,5 +40,6 @@ jobs:
           path: |
             agent-workspace-tests.log
             full-tests.log
+            protected-full-tests.log
             .build/debug/AeroSpaceApp
             .build/debug/aerospace

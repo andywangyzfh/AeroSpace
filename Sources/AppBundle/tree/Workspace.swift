@@ -104,6 +104,15 @@ final class Workspace: TreeNode, NonLeafTreeNodeObject, Hashable, Comparable {
 }
 
 extension Workspace {
+    // Cache restoration must restore hidden workspace placement without replacing
+    // an Agent workspace the user is already viewing.
+    @MainActor
+    func restoreHiddenMonitorAssignment(_ monitor: MonitorInfo) {
+        if !isVisible && isValidAssignment(workspace: self, screen: monitor.rect.topLeftCorner) {
+            assignedMonitorPoint = monitor.rect.topLeftCorner
+        }
+    }
+
     @MainActor
     var isVisible: Bool { visibleWorkspaceToScreenPoint.keys.contains(self) }
     @MainActor

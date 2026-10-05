@@ -7,6 +7,7 @@ import XCTest
 final class AgentWorkspaceTest: XCTestCase {
     override func setUp() async throws {
         setUpWorkspacesForTests()
+        resetClosedWindowsCache()
         updateFocusCache(nil)
         _prevFocusedWorkspaceName = nil
         let result = parseConfig(Self.toml)
@@ -168,6 +169,47 @@ final class AgentWorkspaceTest: XCTestCase {
         assertNotEquals(stub.name, "Agent")
     }
 
+    func testCacheRestorationKeepsCurrentlyVisibleAgent() async throws {
+        let window = TestWindow.new(id: 107, parent: agent.floatingWindowsContainer)
+        _ = await pressEntry()
+        cacheClosedWindowIfNeeded()
+        let restored = try await restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window)
+        assertTrue(restored)
+        assertTrue(agent.isVisible)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Agent")
+        assertEquals(focus.workspace.name, "Agent")
+    }
+
+    func testCacheRestorationDoesNotRevealHiddenAgent() async throws {
+        let window = TestWindow.new(id: 108, parent: agent.floatingWindowsContainer)
+        cacheClosedWindowIfNeeded()
+        let restored = try await restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window)
+        assertTrue(restored)
+        assertFalse(agent.isVisible)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Work")
+    }
+
+    func testStaleVisibleAgentCacheCannotReenterAfterUserLeaves() async throws {
+        let window = TestWindow.new(id: 109, parent: agent.floatingWindowsContainer)
+        _ = await pressEntry()
+        cacheClosedWindowIfNeeded()
+        assertTrue(Workspace.get(byName: "Work").focusWorkspace())
+        let restored = try await restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window)
+        assertTrue(restored)
+        assertFalse(agent.isVisible)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Work")
+    }
+
+    func testStaleOrdinaryCacheCannotHideAgentAfterUserEnters() async throws {
+        let window = TestWindow.new(id: 110, parent: agent.floatingWindowsContainer)
+        cacheClosedWindowIfNeeded()
+        _ = await pressEntry()
+        let restored = try await restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window)
+        assertTrue(restored)
+        assertTrue(agent.isVisible)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Agent")
+    }
+
     func testDisablingPolicyRestoresStandardBehavior() async {
         config.agentWorkspace.enabled = false
         let result = await parseCommand("workspace Agent").cmdOrDie.run(.defaultEnv, .emptyStdin)
@@ -189,6 +231,14 @@ final class AgentWorkspaceTest: XCTestCase {
         let result = parseConfig(Self.toml.replacingOccurrences(of: "ctrl-alt-a = 'workspace Agent'", with: "ctrl-alt-a = 'workspace Work'"))
         assertFalse(result.allowReloadConfig)
         assertTrue(result.strErrors.contains { $0.contains("must directly run") })
+    }
+
+    func testConditionalEntryBindingPreventsConfigReload() {
+        for command in ["false && workspace Agent", "true || workspace Agent"] {
+            let result = parseConfig(Self.toml.replacingOccurrences(of: "ctrl-alt-a = 'workspace Agent'", with: "ctrl-alt-a = '\(command)'"))
+            assertFalse(result.allowReloadConfig, additionalMsg: command)
+            assertTrue(result.strErrors.contains { $0.contains("as a single command") })
+        }
     }
 
     func testInvalidWorkspaceNamePreventsConfigReload() {

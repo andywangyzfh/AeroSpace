@@ -40,6 +40,8 @@ jobs:
       - run: swiftly run swift --version
       - run: ./build-debug.sh
       - run: ./test.sh
+      - name: Run upstream regression with Agent protection enabled
+        run: AEROSPACE_TEST_AGENT_WORKSPACE=1 ./swift-test.sh
 
   # We build release artifacts only on the latest macOS versions because:
   # 1. It cuts the build time twice on GH Actions

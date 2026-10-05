@@ -59,9 +59,13 @@ struct FrozenWorkspace: Sendable {
 
     for frozenWorkspace in closedWindowsCache.workspaces {
         let workspace = Workspace.get(byName: frozenWorkspace.name)
-        _ = topLeftCornerToMonitor[frozenWorkspace.monitor.topLeftCorner]?
-            .singleOrNil()?
-            .setActiveWorkspace(workspace)
+        if let monitor = topLeftCornerToMonitor[frozenWorkspace.monitor.topLeftCorner]?.singleOrNil() {
+            if isProtectedAgentWorkspace(monitor.activeWorkspace) {
+                workspace.restoreHiddenMonitorAssignment(monitor)
+            } else {
+                _ = monitor.setActiveWorkspace(workspace)
+            }
+        }
         for frozenWindow in frozenWorkspace.floatingWindows {
             MacWindow.get(byId: frozenWindow.id)?.bindAsFloatingWindow(to: workspace)
         }
@@ -78,9 +82,13 @@ struct FrozenWorkspace: Sendable {
     }
 
     for monitor in closedWindowsCache.monitors {
-        _ = topLeftCornerToMonitor[monitor.topLeftCorner]?
-            .singleOrNil()?
-            .setActiveWorkspace(Workspace.get(byName: monitor.visibleWorkspace))
+        if let currentMonitor = topLeftCornerToMonitor[monitor.topLeftCorner]?.singleOrNil(),
+           !isProtectedAgentWorkspace(currentMonitor.activeWorkspace)
+        {
+            // Use the current visibility, not the cached visibility: workspace
+            // changes do not invalidate this cache, so its Agent entry may be stale.
+            _ = currentMonitor.setActiveWorkspace(Workspace.get(byName: monitor.visibleWorkspace))
+        }
     }
     return true
 }

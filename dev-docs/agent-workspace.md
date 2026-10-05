@@ -37,6 +37,9 @@ normal focus within it continues to work. Other workspaces behave normally.
 The policy also prevents pulling the visible Agent workspace onto another monitor
 through ordinary commands. Monitor rearrangement preserves an already visible
 workspace; fallback monitor workspaces never select a hidden Agent workspace.
+Window-cache restoration (including screen unlock) keeps an Agent workspace that
+is currently visible. An older cache cannot reveal Agent after the user leaves it
+or hide it after the user deliberately enters it.
 
 Choose a binding that your keyboard remapping actually delivers to macOS. For
 example, if Control is remapped, `cmd-alt-enter` can be used for both
@@ -46,6 +49,9 @@ windows to another workspace.
 
 Set `agent-workspace.enabled = false` and reload to restore upstream behavior.
 Invalid names or a missing entry binding prevent config reload to avoid lockout.
+The entry binding must be a single direct `workspace Agent` command; conditional
+or compound expressions are rejected because they can skip entry or immediately
+leave the workspace again.
 
 ## Limits
 
@@ -63,3 +69,5 @@ Invalid names or a missing entry binding prevent config reload to avoid lockout.
 Run `swift test --filter AgentWorkspaceTest` for the policy regression tests,
 and `swift test` for the full suite. A desktop trial is separate from these
 model tests and should keep the stock app available for rollback.
+Run `AEROSPACE_TEST_AGENT_WORKSPACE=1 swift test` to repeat the upstream
+command/layout regression suite with workspace protection enabled.
