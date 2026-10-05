@@ -12,6 +12,9 @@ struct MoveWorkspaceToMonitorCommand: Command {
 
         switch args.target.val.resolve(target.workspace.workspaceMonitor, wrapAround: args.wrapAround) {
             case .success(let targetMonitor):
+                guard mayShowAgentWorkspace(focusedWorkspace, on: targetMonitor.rect.topLeftCorner) else {
+                    return .fail(io.err(agentWorkspaceEntryError(focusedWorkspace)))
+                }
                 if targetMonitor.monitorId_oneBased == prevMonitor.monitorId_oneBased {
                     return .succ
                 }

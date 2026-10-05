@@ -37,8 +37,9 @@ extension HotKey {
                         binding: binding.descriptionWithKeyNotation,
                     ))
                     try await runLightSession(.hotkeyBinding, .checkServerIsEnabledOrDie()) { () throws in
-                        _ = await config.modes[activeMode]?.bindings[binding.descriptionWithKeyCode]?.commands
-                            .run(.defaultEnv, .emptyStdin)
+                        if let currentBinding = config.modes[activeMode]?.bindings[binding.descriptionWithKeyCode] {
+                            _ = await runHotkeyBindingCommands(mode: activeMode, binding: currentBinding)
+                        }
                     }
                 }
             }

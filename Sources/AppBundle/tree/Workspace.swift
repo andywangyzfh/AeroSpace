@@ -15,18 +15,20 @@ import Common
 @MainActor
 private func getStubWorkspace(forPoint point: CGPoint) -> Workspace {
     if let prev = screenPointToPrevVisibleWorkspace[point].map({ Workspace.get(byName: $0) }),
-       !prev.isVisible && prev.workspaceMonitor.rect.topLeftCorner == point && prev.forceAssignedMonitor == nil
+       !prev.isVisible && !isProtectedAgentWorkspace(prev) &&
+       prev.workspaceMonitor.rect.topLeftCorner == point && prev.forceAssignedMonitor == nil
     {
         return prev
     }
     if let candidate = Workspace.all
-        .first(where: { !$0.isVisible && $0.workspaceMonitor.rect.topLeftCorner == point })
+        .first(where: { !$0.isVisible && !isProtectedAgentWorkspace($0) && $0.workspaceMonitor.rect.topLeftCorner == point })
     {
         return candidate
     }
     return (1 ... Int.max).lazy
         .map { Workspace.get(byName: String($0)) }
-        .first { $0.isEffectivelyEmpty && !$0.isVisible && !config.persistentWorkspaces.contains($0.name) && $0.forceAssignedMonitor == nil }
+        .first { $0.isEffectivelyEmpty && !$0.isVisible && !isProtectedAgentWorkspace($0) &&
+            !config.persistentWorkspaces.contains($0.name) && $0.forceAssignedMonitor == nil }
         .orDie("Can't create empty workspace")
 }
 
@@ -141,7 +143,8 @@ func gcMonitors() {
 
 extension CGPoint {
     @MainActor
-    fileprivate func setActiveWorkspace(_ workspace: Workspace) -> Bool {
+    fileprivate func setActiveWorkspace(_ workspace: Workspace, preservingVisibleWorkspace: Bool = false) -> Bool {
+        guard preservingVisibleWorkspace || mayShowAgentWorkspace(workspace, on: self) else { return false }
         if !isValidAssignment(workspace: workspace, screen: self) {
             return false
         }
@@ -183,7 +186,7 @@ private func rearrangeWorkspacesOnMonitors() {
 
     for newScreen in newScreens {
         if let existingVisibleWorkspace = newScreenToOldScreenMapping[newScreen].flatMap({ oldScreenPointToVisibleWorkspace[$0] }),
-           newScreen.setActiveWorkspace(existingVisibleWorkspace)
+           newScreen.setActiveWorkspace(existingVisibleWorkspace, preservingVisibleWorkspace: true)
         {
             continue
         }

@@ -8,6 +8,9 @@ struct SummonWorkspaceCommand: Command {
     func run(_ env: CmdEnv, _ io: CmdIo) -> BinaryExitCode {
         let workspace = Workspace.get(byName: args.target.val.raw)
         let monitor = focus.workspace.workspaceMonitor
+        guard mayShowAgentWorkspace(workspace, on: monitor.rect.topLeftCorner) else {
+            return .fail(io.err(agentWorkspaceEntryError(workspace)))
+        }
         if monitor.activeWorkspace == workspace {
             return switch args.failIfNoop {
                 case true: .fail

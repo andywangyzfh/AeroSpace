@@ -62,6 +62,9 @@ private struct FrozenFocus: AeroAny, Equatable, Sendable {
 
 @MainActor func setFocus(to newFocus: LiveFocus) -> Bool {
     if _focus == newFocus.frozen { return true }
+    guard mayShowAgentWorkspace(newFocus.workspace, on: newFocus.workspace.workspaceMonitor.rect.topLeftCorner) else {
+        return false
+    }
     let oldFocus = focus
     // Normalize mruWindow when focus away from a workspace
     if oldFocus.workspace != newFocus.workspace {

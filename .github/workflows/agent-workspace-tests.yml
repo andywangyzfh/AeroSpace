@@ -1,0 +1,32 @@
+name: Agent workspace tests
+
+on:
+  push:
+    branches: [agent-workspace-entry]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - run: brew install swiftly
+      - run: swiftly init --skip-install --assume-yes && swiftly install 6.4.0
+      - name: Build with warnings treated as errors
+        run: swiftly run swift build --build-system native --build-tests -Xswiftc -warnings-as-errors
+      - name: Run workspace policy tests
+        run: swiftly run swift test --build-system native --skip-build --filter AgentWorkspaceTest | tee agent-workspace-tests.log
+      - name: Run full regression suite
+        run: swiftly run swift test --build-system native --skip-build | tee full-tests.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-workspace-test-results
+          path: |
+            agent-workspace-tests.log
+            full-tests.log
+            .build/debug/AeroSpaceApp
+            .build/debug/aerospace

@@ -34,7 +34,11 @@ struct WorkspaceCommand: Command {
                     .succ(io.err("Workspace '\(workspaceName)' is already focused. Tip: use --fail-if-noop to exit with non-zero code"))
             }
         } else {
-            return .from(bool: Workspace.get(byName: workspaceName).focusWorkspace())
+            let workspace = Workspace.get(byName: workspaceName)
+            guard mayShowAgentWorkspace(workspace, on: workspace.workspaceMonitor.rect.topLeftCorner) else {
+                return .fail(io.err(agentWorkspaceEntryError(workspace)))
+            }
+            return .from(bool: workspace.focusWorkspace())
         }
     }
 }

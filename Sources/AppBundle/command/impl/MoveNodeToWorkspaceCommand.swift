@@ -30,6 +30,9 @@ struct MoveNodeToWorkspaceCommand: Command {
 
 @MainActor
 func moveWindowToWorkspace(_ window: Window, _ targetWorkspace: Workspace, _ io: CmdIo, focusFollowsWindow: Bool, failIfNoop: Bool, index: Int = INDEX_BIND_LAST) -> BinaryExitCode {
+    if focusFollowsWindow && !mayShowAgentWorkspace(targetWorkspace, on: targetWorkspace.workspaceMonitor.rect.topLeftCorner) {
+        return .fail(io.err(agentWorkspaceEntryError(targetWorkspace)))
+    }
     if window.nodeWorkspace == targetWorkspace {
         return switch failIfNoop {
             case true: .fail
