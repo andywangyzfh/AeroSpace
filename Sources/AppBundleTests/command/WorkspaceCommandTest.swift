@@ -65,6 +65,25 @@ final class WorkspaceCommandTest: XCTestCase {
         assertEquals(focus.workspace.name, "a")
     }
 
+    func testDirect_staleFocusToHiddenWorkspaceShowsItAgain() async {
+        assertTrue(Workspace.get(byName: "a").focusWorkspace())
+        assertTrue(mainMonitorInfo.setActiveWorkspace(Workspace.get(byName: "b")))
+        let result = await parseCommand("workspace a").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "a")
+        assertEquals(focus.workspace.name, "a")
+    }
+
+    func testAutoBackAndForth_staleHiddenFocusShowsTargetInsteadOfPrevious() async {
+        assertTrue(Workspace.get(byName: "a").focusWorkspace())
+        assertTrue(mainMonitorInfo.setActiveWorkspace(Workspace.get(byName: "b")))
+        _prevFocusedWorkspaceName = "b"
+        let result = await parseCommand("workspace --auto-back-and-forth a").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "a")
+        assertEquals(focus.workspace.name, "a")
+    }
+
     func testAutoBackAndForth_alreadyFocused_focusesPrev() async {
         // Make "b" alive so it can be focused as the back-and-forth target.
         _ = Workspace.get(byName: "b")
