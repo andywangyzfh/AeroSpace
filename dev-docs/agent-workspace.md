@@ -38,6 +38,12 @@ The policy also prevents pulling the visible Agent workspace onto another monito
 through ordinary commands. Monitor rearrangement preserves an already visible
 workspace; fallback monitor workspaces never select a hidden Agent workspace.
 
+Choose a binding that your keyboard remapping actually delivers to macOS. For
+example, if Control is remapped, `cmd-alt-enter` can be used for both
+`entry-binding` and the key in `[mode.main.binding]`. The old entry key loses
+permission after reloading this change. Avoid reusing a key that already moves
+windows to another workspace.
+
 Set `agent-workspace.enabled = false` and reload to restore upstream behavior.
 Invalid names or a missing entry binding prevent config reload to avoid lockout.
 

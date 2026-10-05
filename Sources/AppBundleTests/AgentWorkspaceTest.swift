@@ -36,7 +36,7 @@ final class AgentWorkspaceTest: XCTestCase {
 
     private func pressEntry() async -> CmdResult {
         await runHotkeyBindingCommands(mode: "main", binding: config.modes["main"]!.bindings.values
-            .first { $0.descriptionWithKeyNotation == "ctrl-alt-a" }!)
+            .first { $0.descriptionWithKeyNotation == config.agentWorkspace.entryBinding }!)
     }
 
     func testNativeActivationDoesNotRevealAgentOrChangeHistory() async {
@@ -77,6 +77,20 @@ final class AgentWorkspaceTest: XCTestCase {
         let result = await runHotkeyBindingCommands(mode: "main", binding: binding)
         assertEquals(result.exitCode.rawValue, 2)
         assertFalse(agent.isVisible)
+    }
+
+    func testChangingEntryKeyAllowsNewKeyAndRejectsOldKey() async {
+        let oldBinding = config.modes["main"]!.bindings.values.first { $0.descriptionWithKeyNotation == "ctrl-alt-a" }!
+        let result = parseConfig(Self.toml.replacingOccurrences(of: "ctrl-alt-a", with: "cmd-alt-enter"))
+        assertEquals(result.errors, [])
+        config.agentWorkspace = result.config.agentWorkspace
+        config.modes = result.config.modes
+        let blocked = await runHotkeyBindingCommands(mode: "main", binding: oldBinding)
+        assertEquals(blocked.exitCode.rawValue, 2)
+        assertFalse(agent.isVisible)
+        let entered = await pressEntry()
+        assertEquals(entered.exitCode.rawValue, 0)
+        assertTrue(agent.isVisible)
     }
 
     func testSameHotkeyInOtherModeCannotEnter() async {
