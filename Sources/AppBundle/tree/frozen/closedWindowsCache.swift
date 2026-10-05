@@ -56,7 +56,7 @@ struct FrozenWorkspace: Sendable {
     }
     let monitors = monitorInfos
     let topLeftCornerToMonitor = monitors.grouped { $0.rect.topLeftCorner }
-    let currentVisibleWorkspaces = Dictionary(uniqueKeysWithValues: monitors.map { ($0.rect.topLeftCorner, $0.activeWorkspace) })
+    let currentVisibleWorkspaces = topLeftCornerToMonitor.compactMapValues { $0.singleOrNil()?.activeWorkspace }
 
     for frozenWorkspace in closedWindowsCache.workspaces {
         let workspace = Workspace.get(byName: frozenWorkspace.name)

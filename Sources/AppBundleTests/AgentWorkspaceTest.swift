@@ -314,6 +314,76 @@ final class AgentWorkspaceTest: XCTestCase {
         assertEquals(mainMonitorInfo.activeWorkspace.name, "Work")
     }
 
+    func testCacheWithAgentOnSecondaryKeepsBothViews() async throws {
+        let second = addSecondMonitor()
+        config.workspaceToMonitorForceAssignment["Agent"] = [.pattern(second.name)!]
+        let window = TestWindow.new(id: 114, parent: agent.floatingWindowsContainer)
+        _ = await pressEntry()
+        cacheClosedWindowIfNeeded()
+        let restored = try await restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window)
+        assertTrue(restored)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Work")
+        assertEquals(second.activeWorkspace.name, "Agent")
+    }
+
+    func testStaleSecondaryAgentCacheKeepsUserSelectedSecondaryView() async throws {
+        let second = addSecondMonitor()
+        config.workspaceToMonitorForceAssignment["Agent"] = [.pattern(second.name)!]
+        let window = TestWindow.new(id: 115, parent: agent.floatingWindowsContainer)
+        _ = await pressEntry()
+        cacheClosedWindowIfNeeded()
+        let other = Workspace.get(byName: "Other")
+        assertTrue(second.setActiveWorkspace(other))
+        assertTrue(other.focusWorkspace())
+        let restored = try await restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window)
+        assertTrue(restored)
+        assertFalse(agent.isVisible)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Work")
+        assertEquals(second.activeWorkspace.name, "Other")
+    }
+
+    func testEntryWorksAfterAgentMonitorIsRemoved() async {
+        let second = addSecondMonitor()
+        config.workspaceToMonitorForceAssignment["Agent"] = [.pattern(second.name)!]
+        _ = await pressEntry()
+        unsafe monitorInfosForTests = [mainMonitorInfo]
+        gcMonitors()
+        assertFalse(agent.isVisible)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Work")
+        let blocked = await parseCommand("workspace Agent").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(blocked.exitCode.rawValue, 2)
+        let entered = await pressEntry()
+        assertEquals(entered.exitCode.rawValue, 0)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Agent")
+    }
+
+    func testEntryWorksAfterAgentMonitorMovesFarAway() async {
+        let second = addSecondMonitor()
+        config.workspaceToMonitorForceAssignment["Agent"] = [.pattern(second.name)!]
+        _ = await pressEntry()
+        let moved = MonitorFixture(id: 2, name: second.name, rect: Rect(topLeftX: 10000, topLeftY: 0, width: 1920, height: 1080))
+        unsafe monitorInfosForTests = [mainMonitorInfo, moved]
+        _ = moved.activeWorkspace
+        assertFalse(agent.isVisible)
+        let blocked = await parseCommand("workspace Agent").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(blocked.exitCode.rawValue, 2)
+        let entered = await pressEntry()
+        assertEquals(entered.exitCode.rawValue, 0)
+        assertEquals(moved.activeWorkspace.name, "Agent")
+    }
+
+    func testDuplicateMonitorOriginsDoNotCrashCacheRestore() async throws {
+        let mirror = MonitorFixture(id: 2, name: "Mirror", rect: mainMonitorInfo.rect)
+        unsafe monitorInfosForTests = [mainMonitorInfo, mirror]
+        gcMonitors()
+        let window = TestWindow.new(id: 116, parent: agent.floatingWindowsContainer)
+        _ = await pressEntry()
+        cacheClosedWindowIfNeeded()
+        let restored = try await restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window)
+        assertTrue(restored)
+        assertTrue(agent.isVisible)
+    }
+
     func testDisablingPolicyRestoresStandardBehavior() async {
         config.agentWorkspace.enabled = false
         let result = await parseCommand("workspace Agent").cmdOrDie.run(.defaultEnv, .emptyStdin)

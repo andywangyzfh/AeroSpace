@@ -61,7 +61,7 @@ private struct FrozenFocus: AeroAny, Equatable, Sendable {
 @MainActor var focus: LiveFocus { _focus.live }
 
 @MainActor func setFocus(to newFocus: LiveFocus) -> Bool {
-    if _focus == newFocus.frozen { return true }
+    if _focus == newFocus.frozen && newFocus.workspace.isVisible { return true }
     guard mayShowAgentWorkspace(newFocus.workspace, on: newFocus.workspace.workspaceMonitor.rect.topLeftCorner) else {
         return false
     }

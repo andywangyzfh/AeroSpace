@@ -27,7 +27,7 @@ struct WorkspaceCommand: Command {
                     return WorkspaceBackAndForthCommand(args: WorkspaceBackAndForthCmdArgs(rawArgs: [])).run(env, io)
                 }
         }
-        if focusedWs.name == workspaceName {
+        if focusedWs.name == workspaceName && focusedWs.isVisible {
             return switch args.failIfNoop {
                 case true: .fail
                 case false:
