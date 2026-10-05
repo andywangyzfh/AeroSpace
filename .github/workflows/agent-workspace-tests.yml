@@ -13,14 +13,18 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v6
-      - run: brew install swiftly
-      - run: swiftly init --skip-install --assume-yes && swiftly install 6.4.0
+      - name: Install official Swift 6.4 toolchain
+        run: |
+          curl --fail --location --retry 2 -o swift.pkg https://download.swift.org/swift-6.4.0-release/xcode/swift-6.4.0-RELEASE/swift-6.4.0-RELEASE-osx.pkg
+          pkgutil --check-signature swift.pkg
+          sudo installer -pkg swift.pkg -target /
+          echo '/Library/Developer/Toolchains/swift-6.4.0-RELEASE.xctoolchain/usr/bin' >> "$GITHUB_PATH"
       - name: Build with warnings treated as errors
-        run: swiftly run swift build --build-system native --build-tests -Xswiftc -warnings-as-errors
+        run: swift build --build-system native --build-tests -Xswiftc -warnings-as-errors
       - name: Run workspace policy tests
-        run: swiftly run swift test --build-system native --skip-build --filter AgentWorkspaceTest | tee agent-workspace-tests.log
+        run: swift test --build-system native --skip-build --filter AgentWorkspaceTest | tee agent-workspace-tests.log
       - name: Run full regression suite
-        run: swiftly run swift test --build-system native --skip-build | tee full-tests.log
+        run: swift test --build-system native --skip-build | tee full-tests.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
