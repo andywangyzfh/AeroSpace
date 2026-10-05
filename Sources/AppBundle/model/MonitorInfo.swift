@@ -94,8 +94,11 @@ private let testMonitorInfo = MonitorInfoImpl(
     isMain: true,
 )
 
+// Test fixtures are set on the main actor and never used outside XCTest.
+nonisolated(unsafe) var monitorInfosForTests: [MonitorInfo]? = nil
+
 var mainMonitorInfo: MonitorInfo {
-    if isUnitTest { return testMonitorInfo }
+    if isUnitTest { return unsafe monitorInfosForTests?.first(where: \.isMain) ?? testMonitorInfo }
     let screens = NSScreen.screens
     // Fallback: If main screen can't be found (e.g., during display reconfiguration),
     // return screens.first or testMonitor to avoid crash
@@ -106,7 +109,7 @@ var mainMonitorInfo: MonitorInfo {
 
 var monitorInfos: [MonitorInfo] {
     isUnitTest
-        ? [testMonitorInfo]
+        ? unsafe monitorInfosForTests ?? [testMonitorInfo]
         : NSScreen.screens.enumerated().map { $0.element.toMonitorInfo(monitorAppKitNsScreenScreensId: $0.offset + 1) }
 }
 

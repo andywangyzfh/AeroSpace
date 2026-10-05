@@ -35,6 +35,13 @@ final class AgentWorkspaceTest: XCTestCase {
 
     private var agent: Workspace { Workspace.get(byName: "Agent") }
 
+    private func addSecondMonitor() -> SecondMonitor {
+        let second = SecondMonitor()
+        unsafe monitorInfosForTests = [mainMonitorInfo, second]
+        gcMonitors()
+        return second
+    }
+
     private func pressEntry() async -> CmdResult {
         await runHotkeyBindingCommands(mode: "main", binding: config.modes["main"]!.bindings.values
             .first { $0.descriptionWithKeyNotation == config.agentWorkspace.entryBinding }!)
@@ -222,6 +229,91 @@ final class AgentWorkspaceTest: XCTestCase {
         assertEquals(mainMonitorInfo.activeWorkspace.name, "Agent")
     }
 
+    func testTwoMonitorCacheKeepsVisibleAgentAndOrdinaryWorkspace() async throws {
+        let second = addSecondMonitor()
+        assertTrue(second.setActiveWorkspace(Workspace.get(byName: "Other")))
+        let window = TestWindow.new(id: 112, parent: agent.floatingWindowsContainer)
+        _ = await pressEntry()
+        cacheClosedWindowIfNeeded()
+        let restored = try await restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window)
+        assertTrue(restored)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Agent")
+        assertEquals(second.activeWorkspace.name, "Other")
+    }
+
+    func testTwoMonitorStaleAgentCacheKeepsUserSelectedWorkspace() async throws {
+        let second = addSecondMonitor()
+        assertTrue(second.setActiveWorkspace(Workspace.get(byName: "Other")))
+        let window = TestWindow.new(id: 113, parent: agent.floatingWindowsContainer)
+        _ = await pressEntry()
+        cacheClosedWindowIfNeeded()
+        assertTrue(Workspace.get(byName: "BeforeAgent").focusWorkspace())
+        let restored = try await restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window)
+        assertTrue(restored)
+        assertFalse(agent.isVisible)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "BeforeAgent")
+        assertEquals(second.activeWorkspace.name, "Other")
+    }
+
+    func testVisibleAgentCannotBeMovedByMonitorCommand() async {
+        _ = addSecondMonitor()
+        _ = await pressEntry()
+        let result = await parseCommand("move-workspace-to-monitor next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(result.exitCode.rawValue, 2)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Agent")
+        assertEquals(agent.workspaceMonitor.rect.topLeftCorner, mainMonitorInfo.rect.topLeftCorner)
+    }
+
+    func testVisibleAgentCannotBeSummonedFromOtherMonitor() async {
+        let second = addSecondMonitor()
+        let other = Workspace.get(byName: "Other")
+        assertTrue(second.setActiveWorkspace(other))
+        _ = await pressEntry()
+        assertTrue(other.focusWorkspace())
+        let result = await parseCommand("summon-workspace Agent").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(result.exitCode.rawValue, 2)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Agent")
+        assertEquals(second.activeWorkspace.name, "Other")
+    }
+
+    func testMonitorAdditionNeverShowsHiddenAgent() {
+        let second = addSecondMonitor()
+        assertFalse(agent.isVisible)
+        assertNotEquals(second.activeWorkspace.name, "Agent")
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Work")
+    }
+
+    func testMonitorRemovalKeepsAlreadyVisibleAgent() async {
+        _ = addSecondMonitor()
+        _ = await pressEntry()
+        unsafe monitorInfosForTests = [mainMonitorInfo]
+        gcMonitors()
+        assertTrue(agent.isVisible)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Agent")
+    }
+
+    func testMonitorRepositionKeepsAlreadyVisibleAgent() async {
+        let second = addSecondMonitor()
+        assertTrue(second.setActiveWorkspace(Workspace.get(byName: "Other")))
+        _ = await pressEntry()
+        let moved = MonitorFixture(id: 2, name: second.name, rect: Rect(topLeftX: 1920, topLeftY: 300, width: 1920, height: 1080))
+        unsafe monitorInfosForTests = [mainMonitorInfo, moved]
+        assertEquals(moved.activeWorkspace.name, "Other")
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Agent")
+    }
+
+    func testBuiltinNameAssignmentWorksWithThreeMonitors() async {
+        let builtin = MonitorFixture(id: 3, name: "Built-in Retina Display", rect: Rect(topLeftX: 3840, topLeftY: 0, width: 1512, height: 982))
+        unsafe monitorInfosForTests = [mainMonitorInfo, SecondMonitor(), builtin]
+        gcMonitors()
+        config.workspaceToMonitorForceAssignment["Agent"] = [.pattern("Built-in Retina Display")!]
+        let result = await pressEntry()
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(builtin.activeWorkspace.name, "Agent")
+        assertEquals(agent.workspaceMonitor.name, "Built-in Retina Display")
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Work")
+    }
+
     func testDisablingPolicyRestoresStandardBehavior() async {
         config.agentWorkspace.enabled = false
         let result = await parseCommand("workspace Agent").cmdOrDie.run(.defaultEnv, .emptyStdin)
@@ -272,5 +364,16 @@ private struct SecondMonitor: MonitorInfo {
     var visibleRect: Rect { rect }
     let width: CGFloat = 1920
     let height: CGFloat = 1080
+    let isMain = false
+}
+
+private struct MonitorFixture: MonitorInfo {
+    let id: Int
+    let name: String
+    let rect: Rect
+    var monitorAppKitNsScreenScreensId: Int { id }
+    var visibleRect: Rect { rect }
+    var width: CGFloat { rect.width }
+    var height: CGFloat { rect.height }
     let isMain = false
 }

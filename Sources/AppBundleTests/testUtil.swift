@@ -16,6 +16,8 @@ let projectRoot: URL = {
 @MainActor
 func setUpWorkspacesForTests() {
     config = defaultConfig
+    unsafe monitorInfosForTests = nil
+    gcMonitors()
     configUrl = defaultConfigUrl
     config.enableNormalizationFlattenContainers = false // Make layout tests more predictable
     config.enableNormalizationOppositeOrientationForNestedContainers = false // Make layout tests more predictable
