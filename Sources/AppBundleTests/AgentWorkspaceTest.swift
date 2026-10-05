@@ -95,7 +95,7 @@ final class AgentWorkspaceTest: XCTestCase {
         let window = TestWindow.new(id: 102, parent: agent.rootTilingContainer)
         _prevFocusedWorkspaceName = "Agent"
         for command in ["workspace Agent", "focus --window-id \(window.windowId)", "summon-workspace Agent",
-                        "workspace-back-and-forth", "eval workspace Agent"]
+                        "workspace-back-and-forth", "eval 'workspace Agent'"]
         {
             let result = await parseCommand(command).cmdOrDie.run(.defaultEnv, .emptyStdin)
             assertEquals(result.exitCode.rawValue, 2, additionalMsg: command)
