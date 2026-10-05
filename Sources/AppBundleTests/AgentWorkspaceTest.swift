@@ -236,7 +236,7 @@ final class AgentWorkspaceTest: XCTestCase {
     func testConditionalEntryBindingPreventsConfigReload() {
         for command in ["false && workspace Agent", "true || workspace Agent"] {
             let result = parseConfig(Self.toml.replacingOccurrences(of: "ctrl-alt-a = 'workspace Agent'", with: "ctrl-alt-a = '\(command)'"))
-            assertFalse(result.allowReloadConfig, additionalMsg: command)
+            assertEquals(result.allowReloadConfig, false, additionalMsg: command)
             assertTrue(result.strErrors.contains { $0.contains("as a single command") })
         }
     }

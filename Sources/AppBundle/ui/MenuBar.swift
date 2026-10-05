@@ -29,15 +29,19 @@ public func menuBar(viewModel: TrayMenuModel) -> some Scene { // todo should it 
             if let token: RunSessionGuard = .isServerEnabled {
                 Text("Workspaces:")
                 ForEach(viewModel.workspaces, id: \.name) { workspace in
+                    let liveWorkspace = Workspace.get(byName: workspace.name)
+                    let hotkeyOnly = isProtectedAgentWorkspace(liveWorkspace) && !liveWorkspace.isVisible
                     Button {
                         Task.startUnstructured {
                             try await runLightSession(.menuBarButton, token) { _ = Workspace.get(byName: workspace.name).focusWorkspace() }
                         }
                     } label: {
                         Toggle(isOn: .constant(workspace.isFocused)) {
-                            Text(workspace.name + workspace.suffix).font(.system(.body, design: .monospaced))
+                            Text(workspace.name + workspace.suffix + (hotkeyOnly ? " (\(config.agentWorkspace.entryBinding))" : ""))
+                                .font(.system(.body, design: .monospaced))
                         }
                     }
+                    .disabled(hotkeyOnly)
                 }
                 Divider()
             }
