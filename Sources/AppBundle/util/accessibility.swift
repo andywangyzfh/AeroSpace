@@ -343,12 +343,15 @@ private func windowOrNil(_ any: Any?) -> WindowIdAndAxUiElementMock? {
 
 extension AXUIElement: AxUiElementMock {
     func get<Attr: ReadableAttr>(_ attr: Attr) -> Attr.T? {
+        getWithError(attr).value
+    }
+
+    func getWithError<Attr: ReadableAttr>(_ attr: Attr) -> (error: AXError, value: Attr.T?) {
         let state = signposter.beginInterval(#function, "attr: \(attr.key) axTaskLocalAppThreadToken: \(axTaskLocalAppThreadToken?.idForDebug)")
         defer { signposter.endInterval(#function, state) }
         var raw: AnyObject?
-        return unsafe AXUIElementCopyAttributeValue(self, attr.key as CFString, &raw) == .success
-            ? raw.flatMap(attr.getter)
-            : nil
+        let error = unsafe AXUIElementCopyAttributeValue(self, attr.key as CFString, &raw)
+        return (error, error == .success ? raw.flatMap(attr.getter) : nil)
     }
 
     @discardableResult func set<Attr: WritableAttr>(_ attr: Attr, _ value: Attr.T) -> Bool {

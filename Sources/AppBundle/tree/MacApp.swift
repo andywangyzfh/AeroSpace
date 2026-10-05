@@ -303,8 +303,29 @@ final class MacApp: AbstractApp {
             return []
         }
         guard let thread else { return [] }
-        let (alive, dead) = try await thread.runInLoop(.cancellable) { [nsApp, windows, axApp] (job) -> ([UInt32], [UInt32]) in
+        let (alive, dead) = try await thread.runInLoop(.cancellable) { [nsApp, windows, axApp, appAxSubscriptions] (job) -> ([UInt32], [UInt32]) in
             var alive: [UInt32: AxWindow] = windows.threadGuarded
+            var snapshot = axApp.threadGuarded.getWithError(Ax.windowsAttr)
+            if snapshot.error == .invalidUIElement {
+                // Reconnect after the accessibility server invalidates a cached application handle.
+                let replacement = AXUIElementCreateApplication(nsApp.processIdentifier)
+                snapshot = replacement.getWithError(Ax.windowsAttr)
+                if snapshot.error == .success, snapshot.value != nil {
+                    appAxSubscriptions.threadGuarded = []
+                    axApp.threadGuarded = replacement
+                }
+            }
+            // An unreadable application is not an application with no windows. Keep its model
+            // until a successful refresh or process termination confirms which windows are alive.
+            guard snapshot.error == .success, let discovered = snapshot.value else {
+                return (Array(alive.keys), [])
+            }
+            if appAxSubscriptions.threadGuarded.isEmpty {
+                let handlers: HandlerToNotifKeyMapping = unsafe [
+                    (refreshObs, [kAXWindowCreatedNotification, kAXFocusedWindowChangedNotification]),
+                ]
+                appAxSubscriptions.threadGuarded = try unsafe AxSubscription.bulkSubscribe(nsApp, axApp.threadGuarded, job, handlers)
+            }
             var dead = [UInt32: AxWindow]()
             // Second line of defence against lock screen. See the first line of defence: closedWindowsCache
             // Second and third lines of defence are technically needed only to avoid potential flickering
@@ -315,7 +336,7 @@ final class MacApp: AbstractApp {
                 }
             }
 
-            for (id, window) in axApp.threadGuarded.get(Ax.windowsAttr) ?? [] {
+            for (id, window) in discovered {
                 try job.checkCancellation()
                 try alive.getOrRegisterAxWindow(windowId: id, window, nsApp, job)
             }
