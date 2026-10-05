@@ -1,0 +1,17 @@
+// Synthetic elevated window: the workaround applies only to normal-level windows.
+{
+  "AXRole": "AXWindow",
+  "AXSubrole": "AXStandardWindow",
+  "AXFocused": 0,
+  "AXMain": 1,
+  "AXFullScreenButton": { "AXEnabled": 0 },
+  "AXCloseButton": { "AXEnabled": 1 },
+  "AXMinimizeButton": { "AXEnabled": 1 },
+  "Aero.axWindowId": 4,
+  "Aero.App.appBundleId": "ai.perplexity.comet",
+  "Aero.App.nsApp.activationPolicy": "regular",
+  "Aero.windowLevel": "alwaysOnTopWindow",
+  "Aero.AXApp": {},
+  "Aero.AxUiElementWindowType": "dialog",
+  "Aero.AxUiElementWindowType_isDialogHeuristic": true
+}

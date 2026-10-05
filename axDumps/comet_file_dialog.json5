@@ -1,0 +1,17 @@
+// Synthetic dialog fixture: the standard-window exception must not tile file dialogs.
+{
+  "AXRole": "AXWindow",
+  "AXSubrole": "AXDialog",
+  "AXFocused": 0,
+  "AXMain": 1,
+  "AXFullScreenButton": { "AXEnabled": 0 },
+  "AXCloseButton": { "AXEnabled": 1 },
+  "AXMinimizeButton": { "AXEnabled": 1 },
+  "Aero.axWindowId": 3,
+  "Aero.App.appBundleId": "ai.perplexity.comet",
+  "Aero.App.nsApp.activationPolicy": "regular",
+  "Aero.windowLevel": "normalWindow",
+  "Aero.AXApp": {},
+  "Aero.AxUiElementWindowType": "dialog",
+  "Aero.AxUiElementWindowType_isDialogHeuristic": true
+}

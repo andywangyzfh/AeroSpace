@@ -70,11 +70,12 @@ extension AxUiElementMock {
         if get(Ax.fullscreenButtonAttr)?.get(Ax.enabledAttr) != true &&
             id != .gimp && // Gimp doesn't show fullscreen button
 
-            // "Drag out" a tab out of Chrome window. Technically, it shouldn't be necessary, but
+            // "Drag out" a tab out of a Chrome/Comet window. Technically, it shouldn't be necessary, but
             // apparently there is some sort of race condition between users releasing mouse up and
             // Chrome reactivating the fullscreen button
             // todo: consider checking for fullscreen cirteria periodically (downside: will affect performance)
             id != .chrome &&
+            !(id == .comet && windowLevel == .normalWindow) && // Keep elevated Comet windows floating
 
             id != .activityMonitor && // Activity Monitor doesn't show fullscreen button
 
