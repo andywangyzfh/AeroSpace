@@ -56,6 +56,7 @@ struct FrozenWorkspace: Sendable {
     }
     let monitors = monitorInfos
     let topLeftCornerToMonitor = monitors.grouped { $0.rect.topLeftCorner }
+    let currentVisibleWorkspaces = Dictionary(uniqueKeysWithValues: monitors.map { ($0.rect.topLeftCorner, $0.activeWorkspace) })
 
     for frozenWorkspace in closedWindowsCache.workspaces {
         let workspace = Workspace.get(byName: frozenWorkspace.name)
@@ -87,7 +88,11 @@ struct FrozenWorkspace: Sendable {
         {
             // Use the current visibility, not the cached visibility: workspace
             // changes do not invalidate this cache, so its Agent entry may be stale.
-            _ = currentMonitor.setActiveWorkspace(Workspace.get(byName: monitor.visibleWorkspace))
+            if !currentMonitor.setActiveWorkspace(Workspace.get(byName: monitor.visibleWorkspace)),
+               let previousVisible = currentVisibleWorkspaces[monitor.topLeftCorner]
+            {
+                _ = currentMonitor.setActiveWorkspace(previousVisible)
+            }
         }
     }
     return true

@@ -200,6 +200,18 @@ final class AgentWorkspaceTest: XCTestCase {
         assertEquals(mainMonitorInfo.activeWorkspace.name, "Work")
     }
 
+    func testBlockedStaleAgentCacheKeepsCurrentOrdinaryWorkspace() async throws {
+        let window = TestWindow.new(id: 111, parent: agent.floatingWindowsContainer)
+        _ = await pressEntry()
+        cacheClosedWindowIfNeeded()
+        assertTrue(Workspace.get(byName: "Other").focusWorkspace())
+        let restored = try await restoreClosedWindowsCacheIfNeeded(newlyDetectedWindow: window)
+        assertTrue(restored)
+        assertFalse(agent.isVisible)
+        assertEquals(mainMonitorInfo.activeWorkspace.name, "Other")
+        assertEquals(focus.workspace.name, "Other")
+    }
+
     func testStaleOrdinaryCacheCannotHideAgentAfterUserEnters() async throws {
         let window = TestWindow.new(id: 110, parent: agent.floatingWindowsContainer)
         cacheClosedWindowIfNeeded()
